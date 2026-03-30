@@ -23,6 +23,9 @@ sequelize
     });
   })
   .then(() => {
-    app.listen(8888);
+    const PORT = process.env.PORT || 8888;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
   })
   .catch((err) => console.error(err));

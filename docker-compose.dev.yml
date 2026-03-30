@@ -4,7 +4,7 @@ services:
   # MySQL Database
   db:
     image: mysql:8.0
-    container_name: braincheck-db
+    container_name: braincheck-db-dev
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
@@ -23,15 +23,15 @@ services:
       timeout: 20s
       retries: 10
 
-  # Backend Server
+  # Backend Server (Development with hot-reload)
   server:
     build:
       context: ./Server
       dockerfile: Dockerfile
-    container_name: braincheck-server
+    container_name: braincheck-server-dev
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 8888
       DB_HOST: db
       DB_USER: ${DB_USER:-appuser}
@@ -50,22 +50,34 @@ services:
         condition: service_healthy
     networks:
       - braincheck-network
+    volumes:
+      # Mount source code for hot-reload
+      - ./Server:/app
+      # Named volume for node_modules (prevents overwrite)
+      - server-node-modules:/app/node_modules
+    command: npm start
 
-  # Frontend UI
-  ui:
+  # Frontend UI (Development with hot-reload)
+  ui-dev:
     build:
       context: ./UI
-      dockerfile: Dockerfile
-      args:
-        REACT_APP_API_URL: /api
-    container_name: braincheck-ui
+      dockerfile: Dockerfile.dev
+    container_name: braincheck-ui-dev
     restart: unless-stopped
+    environment:
+      REACT_APP_API_URL: http://localhost:8888
     ports:
-      - "3000:80"
+      - "3000:3000"
     depends_on:
       - server
     networks:
       - braincheck-network
+    volumes:
+      # Mount source code for hot-reload
+      - ./UI:/app
+      # Named volume for node_modules
+      - ui-node-modules:/app/node_modules
+    command: npm start
 
 networks:
   braincheck-network:
@@ -74,3 +86,5 @@ networks:
 volumes:
   db-data:
     driver: local
+  server-node-modules:
+  ui-node-modules:
